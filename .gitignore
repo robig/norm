@@ -2,5 +2,10 @@
 /etc/
 /h2test.mv.db
 /sqlitetest.db
-/.settings/
+.settings/*
 .idea
+/gradle/
+/bin/
+/build/
+/.gradle/
+/gradlew.bat
