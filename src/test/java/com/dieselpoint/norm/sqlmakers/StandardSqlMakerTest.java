@@ -2,7 +2,6 @@ package com.dieselpoint.norm.sqlmakers;
 
 import com.dieselpoint.norm.Database;
 import com.dieselpoint.norm.Query;
-import com.dieselpoint.norm.TestGeneratedId;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -1,23 +1,26 @@
 package com.dieselpoint.norm.sqlmakers;
 
 import java.math.BigDecimal;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.persistence.Column;
 
-import com.dieselpoint.norm.DbException;
-import com.dieselpoint.norm.Query;
-import com.dieselpoint.norm.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.dieselpoint.norm.*;
 
 /**
  * Produces ANSI-standard SQL. Extend this class to handle different flavors of sql.
  */
 public class StandardSqlMaker implements SqlMaker {
 
+    private static final Logger LOG = LoggerFactory.getLogger(StandardSqlMaker.class);
+
 	private static ConcurrentHashMap<Class<?>, StandardPojoInfo> map = new ConcurrentHashMap<Class<?>, StandardPojoInfo>();
 
+	@Override
 	public StandardPojoInfo getPojoInfo(Class<?> rowClass) {
 		StandardPojoInfo pi = map.get(rowClass);
 		if (pi == null) {
@@ -36,6 +39,7 @@ public class StandardSqlMaker implements SqlMaker {
 	@Override
 	public String getInsertSql(Query query, Object row) {
 		StandardPojoInfo pojoInfo = getPojoInfo(row.getClass());
+	LOG.debug("getInsertSql: {}", pojoInfo.insertSql);
 		return pojoInfo.insertSql;
 	}
 	
@@ -55,6 +59,9 @@ public class StandardSqlMaker implements SqlMaker {
 		if (pojoInfo.primaryKeyName == null) {
 			throw new DbException("No primary key specified in the row. Use the @Id annotation.");
 		}
+
+	LOG.debug("getUpdateSql: {}", pojoInfo.updateSql);
+
 		return pojoInfo.updateSql;
 	}
 
@@ -77,7 +84,7 @@ public class StandardSqlMaker implements SqlMaker {
 
 	public void makeUpdateSql(StandardPojoInfo pojoInfo) {
 		
-		ArrayList<String> cols = new ArrayList<String>();
+		ArrayList<String> cols = new ArrayList<>();
 		for (Property prop: pojoInfo.propertyMap.values()) {
 			
 			if (prop.isPrimaryKey) {
@@ -181,6 +188,9 @@ public class StandardSqlMaker implements SqlMaker {
 			out.append(" order by ");
 			out.append(orderBy);
 		}
+
+	LOG.debug("getSelectSql: " + out.toString());
+
 		return out.toString();
 	}
 
@@ -278,6 +288,7 @@ public class StandardSqlMaker implements SqlMaker {
 		return colType;
 	}
 
+	@Override
 	public Object convertValue(Object value, String columnTypeName) {
 		return value;
 	}

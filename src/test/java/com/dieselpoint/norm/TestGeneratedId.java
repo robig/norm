@@ -2,37 +2,23 @@ package com.dieselpoint.norm;
 
 import java.util.List;
 
-import javax.persistence.Column;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
+import javax.persistence.*;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.dieselpoint.norm.Database;
+import org.junit.*;
 
 
 public class TestGeneratedId {
-
-	static String DB_DRIVER_CLASS_NAME = "org.postgresql.ds.PGSimpleDataSource";
-    static String DB_SERVER_NAME = "localhost";
-    static String DB_DATABASE = "testdb";
-    static String DB_USERNAME = "postgres";
-    static String DB_PASSWORD = "rootpassword";
 
     private Database db;
 
     @Before
     public void setUp() {
-        System.setProperty("norm.dataSourceClassName", DB_DRIVER_CLASS_NAME);
-        System.setProperty("norm.serverName", DB_SERVER_NAME);
-        System.setProperty("norm.databaseName", DB_DATABASE);
-        System.setProperty("norm.user", DB_USERNAME);
-        System.setProperty("norm.password", DB_PASSWORD);
-
+	Setup.setSysProperties();
         db = new Database();
+
+	db.sql("drop table if exists pojo").execute();
+
+	db.createTable(NormPojo.class);
     }
 	
     @Test
@@ -46,6 +32,8 @@ public class TestGeneratedId {
     
     @Test
     public void testRetrieval() {
+	testCreate();
+
         List<NormPojo> npList = null;
         npList = db.results(NormPojo.class);
         Assert.assertNotNull(npList);
