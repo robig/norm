@@ -13,6 +13,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dieselpoint.norm.relation.LazyList;
 import com.dieselpoint.norm.sqlmakers.PojoInfo;
 import com.dieselpoint.norm.sqlmakers.Property;
 import com.dieselpoint.norm.sqlmakers.SqlMaker;
@@ -47,8 +48,8 @@ public class Query {
     private Transaction transaction;
 
     public Query(Database db) {
-	this.db = db;
-	this.sqlMaker = db.getSqlMaker();
+        this.db = db;
+        this.sqlMaker = db.getSqlMaker();
     }
 
     /**
@@ -59,9 +60,9 @@ public class Query {
      * @param args  The parameter values to use in the where, example: "Bob"
      */
     public Query where(String where, Object... args) {
-	this.where = where;
-	this.args = args;
-	return this;
+        this.where = where;
+        this.args = args;
+        return this;
     }
 
     /**
@@ -72,9 +73,9 @@ public class Query {
      * @param args The parameter values to use in the query.
      */
     public Query sql(String sql, Object... args) {
-	this.sql = sql;
-	this.args = args;
-	return this;
+        this.sql = sql;
+        this.args = args;
+        return this;
     }
 
     /**
@@ -85,17 +86,17 @@ public class Query {
      * @param args The parameter values to use in the query.
      */
     public Query sql(String sql, List<?> args) {
-	this.sql = sql;
-	this.args = args.toArray();
-	return this;
+        this.sql = sql;
+        this.args = args.toArray();
+        return this;
     }
 
     /**
      * Add an "orderBy" clause to a query.
      */
     public Query orderBy(String orderBy) {
-	this.orderBy = orderBy;
-	return this;
+        this.orderBy = orderBy;
+        return this;
     }
 
     /**
@@ -103,12 +104,12 @@ public class Query {
      * results. Will return it in a Map if a class that implements Map is specified.
      */
     public <T> T first(Class<T> clazz) {
-	List<T> list = results(clazz);
-	if (list.size() > 0) {
-	    return list.get(0);
-	} else {
-	    return null;
-	}
+        List<T> list = results(clazz);
+        if (list.size() > 0) {
+            return list.get(0);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -116,49 +117,49 @@ public class Query {
      */
     private List<Map<String, Object>> resultsMap(Class<Map<String, Object>> clazz) {
 
-	List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
-	Connection con = null;
-	PreparedStatement state = null;
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+        Connection con = null;
+        PreparedStatement state = null;
 
-	try {
-	    if (sql == null) {
-		sql = sqlMaker.getSelectSql(this, clazz);
-	    }
+        try {
+            if (sql == null) {
+                sql = sqlMaker.getSelectSql(this, clazz);
+            }
 
-	    Connection localCon;
-	    if (transaction == null) {
-		localCon = db.getConnection();
-		con = localCon; // con gets closed below if non-null
-	    } else {
-		localCon = transaction.getConnection();
-	    }
+            Connection localCon;
+            if (transaction == null) {
+                localCon = db.getConnection();
+                con = localCon; // con gets closed below if non-null
+            } else {
+                localCon = transaction.getConnection();
+            }
 
-	    state = localCon.prepareStatement(sql);
-	    loadArgs(state);
+            state = localCon.prepareStatement(sql);
+            loadArgs(state);
 
-	    ResultSet rs = state.executeQuery();
+            ResultSet rs = state.executeQuery();
 
-	    meta = rs.getMetaData();
-	    int colCount = meta.getColumnCount();
+            meta = rs.getMetaData();
+            int colCount = meta.getColumnCount();
 
-	    while (rs.next()) {
-		Map<String, Object> map = clazz.newInstance();
+            while (rs.next()) {
+                Map<String, Object> map = clazz.newInstance();
 
-		for (int i = 1; i <= colCount; i++) {
-		    String colName = meta.getColumnLabel(i);
-		    map.put(colName, rs.getObject(i));
-		}
-		out.add(map);
-	    }
+                for (int i = 1; i <= colCount; i++) {
+                    String colName = meta.getColumnLabel(i);
+                    map.put(colName, rs.getObject(i));
+                }
+                out.add(map);
+            }
 
-	} catch (InstantiationException | IllegalAccessException | SQLException | IllegalArgumentException e) {
-	    throw new DbException(e);
-	} finally {
-	    close(state);
-	    close(con);
-	}
+        } catch (InstantiationException | IllegalAccessException | SQLException | IllegalArgumentException e) {
+            throw new DbException(e);
+        } finally {
+            close(state);
+            close(con);
+        }
 
-	return out;
+        return out;
     }
 
     /**
@@ -168,102 +169,122 @@ public class Query {
     @SuppressWarnings("unchecked")
     public <T> List<T> results(Class<T> clazz) {
 
-	if (Map.class.isAssignableFrom(clazz)) {
-	    return (List<T>) resultsMap((Class<Map<String, Object>>) clazz);
-	}
+        if (Map.class.isAssignableFrom(clazz)) {
+            return (List<T>) resultsMap((Class<Map<String, Object>>) clazz);
+        }
 
-	List<T> out = new ArrayList<>();
-	Connection con = null;
-	PreparedStatement state = null;
+        List<T> out = new ArrayList<>();
+        Connection con = null;
+        PreparedStatement state = null;
 
-	try {
-	    if (sql == null) {
-		sql = sqlMaker.getSelectSql(this, clazz);
-	    }
+        try {
+            if (sql == null) {
+                sql = sqlMaker.getSelectSql(this, clazz);
+            }
 
-	    Connection localCon;
-	    if (transaction == null) {
-		localCon = db.getConnection();
-		con = localCon; // con gets closed below if non-null
-	    } else {
-		localCon = transaction.getConnection();
-	    }
+            Connection localCon;
+            if (transaction == null) {
+                localCon = db.getConnection();
+                con = localCon; // con gets closed below if non-null
+            } else {
+                localCon = transaction.getConnection();
+            }
 
-	    state = localCon.prepareStatement(sql);
-	    loadArgs(state);
+            state = localCon.prepareStatement(sql);
+            loadArgs(state);
 
-	    LOG.debug(extractSql());
-	    if (db.getSqlLogger() != null)
-		db.getSqlLogger().logSelect(extractSql());
-	    try (ResultSet rs = state.executeQuery()) {
+            LOG.debug(extractSql());
+            if (db.getSqlLogger() != null)
+                db.getSqlLogger().logSelect(extractSql());
+            try (ResultSet rs = state.executeQuery()) {
 
-		meta = rs.getMetaData();
-		int colCount = meta.getColumnCount();
+                meta = rs.getMetaData();
+                int colCount = meta.getColumnCount();
 
-		if (Util.isPrimitiveOrString(clazz) || clazz.getPackage().getName().startsWith("java.sql")) {
-		    // if the receiver class is a primitive or jdbc type just grab the first column
-		    // and assign it
-		    while (rs.next()) {
-			Object colValue = rs.getObject(1);
-			out.add((T) colValue);
-		    }
+                if (Util.isPrimitiveOrString(clazz) || clazz.getPackage().getName().startsWith("java.sql")) {
+                    // if the receiver class is a primitive or jdbc type just grab the first column
+                    // and assign it
+                    while (rs.next()) {
+                        Object colValue = rs.getObject(1);
+                        out.add((T) colValue);
+                    }
 
-		} else {
-		    PojoInfo pojoInfo = sqlMaker.getPojoInfo(clazz);
-		    while (rs.next()) {
-			T row = clazz.newInstance();
+                } else {
+                    List<String> processed=new ArrayList<>();
+                    PojoInfo pojoInfo = sqlMaker.getPojoInfo(clazz);
+                    while (rs.next()) {
+                        T row = clazz.newInstance();
 
-			for (int i = 1; i <= colCount; i++) {
-			    String colName = meta.getColumnLabel(i);
-			    Object colValue = sqlMaker.convertValue(rs.getObject(i), meta.getColumnTypeName(i));
+                        for (int i = 1; i <= colCount; i++) {
+                            String colName = meta.getColumnLabel(i);
+                            Object colValue = sqlMaker.convertValue(rs.getObject(i), meta.getColumnTypeName(i));
 
-			    pojoInfo.putValue(row, colName, colValue, true);
-			}
-			out.add(row);
-		    }
-		}
-	    }
+                            pojoInfo.putValue(row, colName, colValue, true);
+                            processed.add(colName);
+                        }
 
-	} catch (InstantiationException | IllegalAccessException | SQLException e) {
-	    DbException dbe = new DbException(e);
-	    dbe.setSql(sql);
-	    throw dbe;
-	} finally {
-	    close(state);
-	    close(con);
-	}
+                        for (String n : pojoInfo.getPropertyNames()) {
+                            if (processed.contains(n))
+                                continue;
+                            Object pk = pojoInfo.getValue(row, pojoInfo.getPrimaryKeyName());
+                            Property prop = pojoInfo.getProperty(n);
+                            if (prop.isRelation && !prop.hasColumn && prop.dataType == List.class) {
+                                PojoInfo dest = sqlMaker.getPojoInfo(prop.relationClass);
+                                Property relProp = dest.findRelation(clazz);
+                                if (relProp != null) {
 
-	return out;
+                                    pojoInfo.putValue(row, n,
+                                            new LazyList(db, db.where(relProp.name + "=?", pk), prop.relationClass),
+                                            true);
+                                }
+                            }
+                        }
+
+                        out.add(row);
+                    }
+                }
+            }
+
+        } catch (InstantiationException | IllegalAccessException | SQLException e) {
+            DbException dbe = new DbException(e);
+            dbe.setSql(extractSql());
+            throw dbe;
+        } finally {
+            close(state);
+            close(con);
+        }
+
+        return out;
     }
 
     public String extractSql() {
-	String sqlStr = sql;
-	if (args != null) {
-	    for (Object o : args) {
-		sqlStr = sqlStr.replaceFirst("\\?",
-			(o instanceof String) ? "'" + String.valueOf(o) + "'" : String.valueOf(o));
-	    }
-	}
-	return sqlStr;
+        String sqlStr = sql;
+        if (args != null) {
+            for (Object o : args) {
+                sqlStr = sqlStr.replaceFirst("\\?",
+                        (o instanceof String) ? "'" + String.valueOf(o) + "'" : String.valueOf(o));
+            }
+        }
+        return sqlStr;
     }
 
     private void loadArgs(PreparedStatement state) throws SQLException {
-	if (args != null) {
-	    for (int i = 0; i < args.length; i++) {
-		state.setObject(i + 1, args[i]);
-	    }
-	}
+        if (args != null) {
+            for (int i = 0; i < args.length; i++) {
+                state.setObject(i + 1, args[i]);
+            }
+        }
     }
 
     private void close(AutoCloseable ac) {
-	if (ac == null) {
-	    return;
-	}
-	try {
-	    ac.close();
-	} catch (Exception e) {
-	    // bury it
-	}
+        if (ac == null) {
+            return;
+        }
+        try {
+            ac.close();
+        } catch (Exception e) {
+            // bury it
+        }
     }
 
     /**
@@ -272,23 +293,23 @@ public class Query {
      */
     public Query insert(Object row) {
 
-	if (this.generatedKeyReceiver == null) {
-	    PojoInfo pojoInfo = sqlMaker.getPojoInfo(row.getClass());
-	    Property prop = pojoInfo.getGeneratedColumnProperty();
-	    if (prop != null) {
-		this.generatedKeyReceiver = row;
-		this.generatedKeyNames = new String[] { prop.name };
-	    }
-	}
+        if (this.generatedKeyReceiver == null) {
+            PojoInfo pojoInfo = sqlMaker.getPojoInfo(row.getClass());
+            Property prop = pojoInfo.getGeneratedColumnProperty();
+            if (prop != null) {
+                this.generatedKeyReceiver = row;
+                this.generatedKeyNames = new String[] { prop.name };
+            }
+        }
 
-	sql = sqlMaker.getInsertSql(this, row);
-	args = sqlMaker.getInsertArgs(this, row);
+        sql = sqlMaker.getInsertSql(this, row);
+        args = sqlMaker.getInsertArgs(this, row);
 
-	if (db.getSqlLogger() != null)
-	    db.getSqlLogger().logInsert(sql);
-	execute();
+        if (db.getSqlLogger() != null)
+            db.getSqlLogger().logInsert(sql);
+        execute();
 
-	return this;
+        return this;
     }
 
     /**
@@ -296,12 +317,12 @@ public class Query {
      */
     public Query upsert(Object row) {
 
-	sql = sqlMaker.getUpsertSql(this, row);
-	args = sqlMaker.getUpsertArgs(this, row);
+        sql = sqlMaker.getUpsertSql(this, row);
+        args = sqlMaker.getUpsertArgs(this, row);
 
-	execute();
+        execute();
 
-	return this;
+        return this;
     }
 
     /**
@@ -310,15 +331,15 @@ public class Query {
      */
     public Query update(Object row) {
 
-	sql = sqlMaker.getUpdateSql(this, row);
-	args = sqlMaker.getUpdateArgs(this, row);
+        sql = sqlMaker.getUpdateSql(this, row);
+        args = sqlMaker.getUpdateArgs(this, row);
 
-	if (db.getSqlLogger() != null)
-	    db.getSqlLogger().logUpdate(sql);
-	if (execute().getRowsAffected() <= 0) {
-	    throw new DbException("Row not updated because the primary key was not found");
-	}
-	return this;
+        if (db.getSqlLogger() != null)
+            db.getSqlLogger().logUpdate(sql);
+        if (execute().getRowsAffected() <= 0) {
+            throw new DbException("Row not updated because the primary key was not found");
+        }
+        return this;
     }
 
     /**
@@ -328,141 +349,141 @@ public class Query {
      */
     public Query execute() {
 
-	Connection con = null;
-	PreparedStatement state = null;
+        Connection con = null;
+        PreparedStatement state = null;
 
-	try {
+        try {
 
-	    Connection localCon;
-	    if (transaction == null) {
-		localCon = db.getConnection();
-		con = localCon; // con gets closed below if non-null
-	    } else {
-		localCon = transaction.getConnection();
-	    }
+            Connection localCon;
+            if (transaction == null) {
+                localCon = db.getConnection();
+                con = localCon; // con gets closed below if non-null
+            } else {
+                localCon = transaction.getConnection();
+            }
 
-	    // see notes on generatedKeyReceiver()
-	    if (generatedKeyReceiver != null) {
-		state = localCon.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-	    } else {
-		state = localCon.prepareStatement(sql);
-	    }
+            // see notes on generatedKeyReceiver()
+            if (generatedKeyReceiver != null) {
+                state = localCon.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            } else {
+                state = localCon.prepareStatement(sql);
+            }
 
-	    if (args != null) {
-		for (int i = 0; i < args.length; i++) {
-		    Object arg = args[i];
+            if (args != null) {
+                for (int i = 0; i < args.length; i++) {
+                    Object arg = args[i];
 
-		    /*
-		     * The purpose of this is to allow List args to be inserted into JDBC array
-		     * fields. Postgres JDBC drivers do not handle this correctly.
-		     */
-		    if (arg != null && List.class.isAssignableFrom(arg.getClass())) {
-			arg = ((List<?>) arg).toArray();
-		    }
+                    /*
+                     * The purpose of this is to allow List args to be inserted into JDBC array
+                     * fields. Postgres JDBC drivers do not handle this correctly.
+                     */
+                    if (arg != null && List.class.isAssignableFrom(arg.getClass())) {
+                        arg = ((List<?>) arg).toArray();
+                    }
 
-		    state.setObject(i + 1, arg);
-		}
-	    }
+                    state.setObject(i + 1, arg);
+                }
+            }
 
-	    rowsAffected = state.executeUpdate();
+            rowsAffected = state.executeUpdate();
 
-	    if (generatedKeyReceiver != null) {
-		populateGeneratedKeys(state, generatedKeyReceiver, generatedKeyNames);
-	    }
+            if (generatedKeyReceiver != null) {
+                populateGeneratedKeys(state, generatedKeyReceiver, generatedKeyNames);
+            }
 
-	} catch (SQLException | IllegalArgumentException e) {
-	    DbException dbe = new DbException(e);
-	    dbe.setSql(sql);
-	    throw dbe;
-	} finally {
-	    close(state);
-	    close(con);
-	}
+        } catch (SQLException | IllegalArgumentException e) {
+            DbException dbe = new DbException(e);
+            dbe.setSql(sql);
+            throw dbe;
+        } finally {
+            close(state);
+            close(con);
+        }
 
-	return this;
+        return this;
     }
 
     @SuppressWarnings("unchecked")
     private void populateGeneratedKeys(PreparedStatement state, Object generatedKeyReceiver,
-	    String[] generatedKeyNames) {
+            String[] generatedKeyNames) {
 
-	ResultSet rs = null;
+        ResultSet rs = null;
 
-	try {
-	    boolean isMap = Map.class.isAssignableFrom(generatedKeyReceiver.getClass());
+        try {
+            boolean isMap = Map.class.isAssignableFrom(generatedKeyReceiver.getClass());
 
-	    PojoInfo pojoInfo = null;
-	    if (!isMap) {
-		pojoInfo = sqlMaker.getPojoInfo(generatedKeyReceiver.getClass());
-	    }
+            PojoInfo pojoInfo = null;
+            if (!isMap) {
+                pojoInfo = sqlMaker.getPojoInfo(generatedKeyReceiver.getClass());
+            }
 
-	    /*-
-	     * JDBC drivers are inconsistent in the way they handle generated keys.
-	     * MySQL returns a single column named "GENERATED_KEY". The column has the incorrect name, obviously.
-	     * Postgres returns a row of keys with the right names, but it returns more than just the generated ones.
-	     * So we do a hack: it it's just one column, assume it's the right one, else fetch the value
-	     * by column name.
-	     */
+            /*-
+             * JDBC drivers are inconsistent in the way they handle generated keys.
+             * MySQL returns a single column named "GENERATED_KEY". The column has the incorrect name, obviously.
+             * Postgres returns a row of keys with the right names, but it returns more than just the generated ones.
+             * So we do a hack: it it's just one column, assume it's the right one, else fetch the value
+             * by column name.
+             */
 
-	    rs = state.getGeneratedKeys();
+            rs = state.getGeneratedKeys();
 
-	    ResultSetMetaData meta = rs.getMetaData();
-	    int colCount = meta.getColumnCount();
+            ResultSetMetaData meta = rs.getMetaData();
+            int colCount = meta.getColumnCount();
 
-	    if (rs.next()) {
-		if (isMap) {
-		    Map<String, Object> map = (Map<String, Object>) generatedKeyReceiver;
-		    if (colCount == 1) {
-			map.put(generatedKeyNames[0], rs.getObject(1));
-		    } else {
-			for (String generatedKeyName : generatedKeyNames) {
-			    map.put(generatedKeyName, rs.getObject(generatedKeyName));
-			}
-		    }
+            if (rs.next()) {
+                if (isMap) {
+                    Map<String, Object> map = (Map<String, Object>) generatedKeyReceiver;
+                    if (colCount == 1) {
+                        map.put(generatedKeyNames[0], rs.getObject(1));
+                    } else {
+                        for (String generatedKeyName : generatedKeyNames) {
+                            map.put(generatedKeyName, rs.getObject(generatedKeyName));
+                        }
+                    }
 
-		} else {
+                } else {
 
-		    for (String generatedKeyName : generatedKeyNames) {
-			Property prop = pojoInfo.getProperty(generatedKeyName);
-			if (prop == null) {
-			    throw new DbException("Generated key name not found: " + generatedKeyName);
-			}
+                    for (String generatedKeyName : generatedKeyNames) {
+                        Property prop = pojoInfo.getProperty(generatedKeyName);
+                        if (prop == null) {
+                            throw new DbException("Generated key name not found: " + generatedKeyName);
+                        }
 
-			// is it an int or a long?
-			boolean isInt = prop.dataType.isAssignableFrom(int.class)
-				|| prop.dataType.isAssignableFrom(Integer.class);
+                        // is it an int or a long?
+                        boolean isInt = prop.dataType.isAssignableFrom(int.class)
+                                || prop.dataType.isAssignableFrom(Integer.class);
 
-			Object newKey;
-			if (colCount == 1) {
-			    if (isInt) {
-				newKey = rs.getInt(1);
-			    } else {
-				newKey = rs.getLong(1);
-			    }
-			} else {
-			    // colcount > 1, must do by name
-			    if (isInt) {
-				newKey = rs.getInt(prop.name);
-			    } else {
-				newKey = rs.getLong(prop.name);
-			    }
-			}
-			pojoInfo.putValue(generatedKeyReceiver, prop.name, newKey);
-		    }
-		}
-	    }
+                        Object newKey;
+                        if (colCount == 1) {
+                            if (isInt) {
+                                newKey = rs.getInt(1);
+                            } else {
+                                newKey = rs.getLong(1);
+                            }
+                        } else {
+                            // colcount > 1, must do by name
+                            if (isInt) {
+                                newKey = rs.getInt(prop.name);
+                            } else {
+                                newKey = rs.getLong(prop.name);
+                            }
+                        }
+                        pojoInfo.putValue(generatedKeyReceiver, prop.name, newKey);
+                    }
+                }
+            }
 
-	} catch (SQLException | SecurityException | IllegalArgumentException e) {
-	    throw new DbException(e);
+        } catch (SQLException | SecurityException | IllegalArgumentException e) {
+            throw new DbException(e);
 
-	} finally {
-	    if (rs != null) {
-		try {
-		    rs.close();
-		} catch (SQLException e) {
-		}
-	    }
-	}
+        } finally {
+            if (rs != null) {
+                try {
+                    rs.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
 
     }
 
@@ -477,9 +498,9 @@ public class Query {
      * also the field/column names that should be filled in.
      */
     public Query generatedKeyReceiver(Object generatedKeyReceiver, String... generatedKeyNames) {
-	this.generatedKeyReceiver = generatedKeyReceiver;
-	this.generatedKeyNames = generatedKeyNames;
-	return this;
+        this.generatedKeyReceiver = generatedKeyReceiver;
+        this.generatedKeyNames = generatedKeyNames;
+        return this;
     }
 
     /**
@@ -507,11 +528,11 @@ public class Query {
      * Simple, primitive method for creating a table based on a pojo.
      */
     public Query createTable(Class<?> clazz) {
-	sql = sqlMaker.getCreateTableSql(clazz);
-	if (db.getSqlLogger() != null)
-	    db.getSqlLogger().logCreateTable(sql);
-	execute();
-	return this;
+        sql = sqlMaker.getCreateTableSql(clazz);
+        if (db.getSqlLogger() != null)
+            db.getSqlLogger().logCreateTable(sql);
+        execute();
+        return this;
     }
 
     /**
@@ -521,11 +542,11 @@ public class Query {
      */
     public Query delete(Object row) {
 
-	sql = sqlMaker.getDeleteSql(this, row);
-	args = sqlMaker.getDeleteArgs(this, row);
+        sql = sqlMaker.getDeleteSql(this, row);
+        args = sqlMaker.getDeleteArgs(this, row);
 
-	execute();
-	return this;
+        execute();
+        return this;
     }
 
     /**
@@ -533,27 +554,27 @@ public class Query {
      * .table() method and limit the rows to delete using the .where() method.
      */
     public Query delete() {
-	String table = getTable();
-	if (table == null) {
-	    throw new DbException("You must specify a table name with the table() method.");
-	}
-	sql = "delete from " + table;
-	if (where != null) {
-	    sql += " where " + where;
-	}
+        String table = getTable();
+        if (table == null) {
+            throw new DbException("You must specify a table name with the table() method.");
+        }
+        sql = "delete from " + table;
+        if (where != null) {
+            sql += " where " + where;
+        }
 
-	if (db.getSqlLogger() != null)
-	    db.getSqlLogger().logUpdate(sql);
-	execute();
-	return this;
+        if (db.getSqlLogger() != null)
+            db.getSqlLogger().logUpdate(sql);
+        execute();
+        return this;
     }
 
     /**
      * Specify the table to operate on.
      */
     public Query table(String table) {
-	this.table = table;
-	return this;
+        this.table = table;
+        return this;
     }
 
     /**
@@ -562,39 +583,39 @@ public class Query {
      * .delete(), etc.: .table("foo").where("bar=bah").delete().rowsAffected();
      */
     public int getRowsAffected() {
-	return rowsAffected;
+        return rowsAffected;
     }
 
     /**
      * Specify that this query should be a part of the specified transaction.
      */
     public Query transaction(Transaction trans) {
-	this.transaction = trans;
-	return this;
+        this.transaction = trans;
+        return this;
     }
 
     public String getOrderBy() {
-	return orderBy;
+        return orderBy;
     }
 
     public String getWhere() {
-	return where;
+        return where;
     }
 
     public String getTable() {
-	return table;
+        return table;
     }
 
     public ResultSetMetaData getResultSetMetaData() {
-	return meta;
+        return meta;
     }
 
     public Object[] getArgs() {
-	return args;
+        return args;
     }
 
     public String getSql() {
-	return sql;
+        return sql;
     }
 
 }

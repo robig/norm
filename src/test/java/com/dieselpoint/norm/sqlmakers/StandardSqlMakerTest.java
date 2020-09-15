@@ -21,8 +21,8 @@ public class StandardSqlMakerTest {
 
     @Before
     public void setup() {
-        sut = new StandardSqlMaker();
         db = mock(Database.class);
+        sut = new StandardSqlMaker(db);
 
         when(db.getSqlMaker()).thenReturn(sut);
     }

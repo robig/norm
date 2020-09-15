@@ -6,21 +6,20 @@ import javax.persistence.*;
 
 import org.junit.*;
 
-
 public class TestGeneratedId {
 
     private Database db;
 
     @Before
     public void setUp() {
-	Setup.setSysProperties();
+        Setup.setSysProperties();
         db = new Database();
 
-	db.sql("drop table if exists pojo").execute();
+        db.sql("drop table if exists pojo").execute();
 
-	db.createTable(NormPojo.class);
+        db.createTable(NormPojo.class);
     }
-	
+
     @Test
     public void testCreate() {
         NormPojo np = new NormPojo();
@@ -29,24 +28,26 @@ public class TestGeneratedId {
         db.generatedKeyReceiver(np, "id").insert(np);
         Assert.assertNotNull(np.getDatabaseId());
     }
-    
+
     @Test
     public void testRetrieval() {
-	testCreate();
+        testCreate();
 
         List<NormPojo> npList = null;
         npList = db.results(NormPojo.class);
         Assert.assertNotNull(npList);
         Assert.assertTrue(npList.size() > 0);
     }
-    
-    @Table(name = "pojo") 
+
+    @Table(name = "pojo")
     public static class NormPojo {
 
         /** Database record ID. */
+        @Column(name = "id")
         private Integer databaseId;
 
         /** Unique identifier of the object. */
+        @Column(name = "object_id", unique = true)
         private String id;
 
         /** Human readable name. */
@@ -91,10 +92,8 @@ public class TestGeneratedId {
 
         public void setDatabaseId(Integer databaseId) {
             this.databaseId = databaseId;
-        }   
+        }
 
     }
 
-    
-    
 }

@@ -2,9 +2,15 @@ package com.dieselpoint.norm.sqlmakers;
 
 import javax.persistence.Column;
 
+import com.dieselpoint.norm.Database;
+
 public class PostgresMaker extends StandardSqlMaker {
 
-	@Override
+    public PostgresMaker(Database db) {
+        super(db);
+    }
+
+    @Override
 	public String getCreateTableSql(Class<?> clazz) {
 		
 		StringBuilder buf = new StringBuilder();

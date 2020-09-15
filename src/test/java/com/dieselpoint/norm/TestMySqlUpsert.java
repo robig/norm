@@ -20,7 +20,7 @@ public class TestMySqlUpsert {
 		Setup.setSysProperties();
 		
 		Database db = new Database();
-		db.setSqlMaker(new MySqlMaker());
+        db.setSqlMaker(new MySqlMaker(db));
 		
 		db.sql("drop table if exists upserttest").execute();
 		

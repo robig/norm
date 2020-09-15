@@ -1,11 +1,16 @@
 package com.dieselpoint.norm.sqlmakers;
 
+import com.dieselpoint.norm.Database;
 import com.dieselpoint.norm.Query;
 
 
 public class MySqlMaker extends StandardSqlMaker {
 
-	@Override
+    public MySqlMaker(Database db) {
+        super(db);
+    }
+
+    @Override
 	public String getUpsertSql(Query query, Object row) {
 		StandardPojoInfo pojoInfo = getPojoInfo(row.getClass());
 		return pojoInfo.upsertSql;

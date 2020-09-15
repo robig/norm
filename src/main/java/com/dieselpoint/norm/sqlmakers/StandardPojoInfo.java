@@ -9,20 +9,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
-import javax.persistence.AttributeConverter;
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Transient;
+import javax.persistence.*;
 
 import com.dieselpoint.norm.ColumnOrder;
 import com.dieselpoint.norm.DbException;
@@ -34,308 +24,376 @@ import com.dieselpoint.norm.serialize.DbSerializer;
 @SuppressWarnings("rawtypes")
 public class StandardPojoInfo implements PojoInfo {
 
-	/*
-	 * annotations recognized: @ Id, @ GeneratedValue @ Transient @ Table @ Column @
-	 * DbSerializer @ Enumerated
-	 */
+    /*
+     * annotations recognized: @ Id, @ GeneratedValue @ Transient @ Table @ Column @
+     * DbSerializer @ Enumerated
+     */
 
-	// these are public to make subclassing easier
-	public LinkedHashMap<String, Property> propertyMap = new LinkedHashMap<String, Property>();
-	public String table;
-	public String primaryKeyName;
-	public String generatedColumnName;
+    // these are public to make subclassing easier
+    public LinkedHashMap<String, Property> propertyMap = new LinkedHashMap<String, Property>();
+    public String table;
+    public String primaryKeyName;
+    public String generatedColumnName;
 
-	public String insertSql;
-	public int insertSqlArgCount;
-	public String[] insertColumnNames;
+    public String insertSql;
+    public int insertSqlArgCount;
+    public String[] insertColumnNames;
 
-	public String upsertSql;
-	public int upsertSqlArgCount;
-	public String[] upsertColumnNames;
+    public String upsertSql;
+    public int upsertSqlArgCount;
+    public String[] upsertColumnNames;
 
-	public String updateSql;
-	public String[] updateColumnNames;
-	public int updateSqlArgCount;
+    public String updateSql;
+    public String[] updateColumnNames;
+    public int updateSqlArgCount;
 
-	public String selectColumns;
+    public String selectColumns;
 
-	public StandardPojoInfo(Class<?> clazz) {
+    public StandardPojoInfo(Class<?> clazz) {
 
-		try {
+        try {
+            if (Map.class.isAssignableFrom(clazz)) {
+                // leave properties empty
+            } else {
+                List<Property> props = populateProperties(clazz);
 
-			if (Map.class.isAssignableFrom(clazz)) {
-				// leave properties empty
-			} else {
-				List<Property> props = populateProperties(clazz);
+                ColumnOrder colOrder = clazz.getAnnotation(ColumnOrder.class);
+                if (colOrder != null) {
+                    // reorder the properties
+                    String[] cols = colOrder.value();
+                    List<Property> reordered = new ArrayList<>();
+                    for (int i = 0; i < cols.length; i++) {
+                        for (Property prop : props) {
+                            if (prop.name.equals(cols[i])) {
+                                reordered.add(prop);
+                                break;
+                            }
+                        }
+                    }
+                    // props not in the cols list are ignored
+                    props = reordered;
+                }
 
-				ColumnOrder colOrder = clazz.getAnnotation(ColumnOrder.class);
-				if (colOrder != null) {
-					// reorder the properties
-					String[] cols = colOrder.value();
-					List<Property> reordered = new ArrayList<>();
-					for (int i = 0; i < cols.length; i++) {
-						for (Property prop : props) {
-							if (prop.name.equals(cols[i])) {
-								reordered.add(prop);
-								break;
-							}
-						}
-					}
-					// props not in the cols list are ignored
-					props = reordered;
-				}
+                for (Property prop : props) {
+                    propertyMap.put(prop.name, prop);
+                }
+            }
 
-				for (Property prop : props) {
-					propertyMap.put(prop.name, prop);
-				}
-			}
+            Table annot = clazz.getAnnotation(Table.class);
+            if (annot != null) {
+                if (annot.schema() != null && !annot.schema().isEmpty()) {
+                    table = annot.schema() + "." + annot.name();
+                } else {
+                    table = annot.name();
+                }
+            } else {
+                table = clazz.getSimpleName();
+            }
 
-			Table annot = clazz.getAnnotation(Table.class);
-			if (annot != null) {
-				if (annot.schema() != null && !annot.schema().isEmpty()) {
-					table = annot.schema() + "." + annot.name();
-				} else {
-					table = annot.name();
-				}
-			} else {
-				table = clazz.getSimpleName();
-			}
+        } catch (Throwable t) {
+            throw new DbException(t);
+        }
+    }
 
-		} catch (Throwable t) {
-			throw new DbException(t);
-		}
-	}
+    private List<Property> populateProperties(Class<?> clazz)
+            throws IntrospectionException, InstantiationException, IllegalAccessException {
 
-	private List<Property> populateProperties(Class<?> clazz)
-			throws IntrospectionException, InstantiationException, IllegalAccessException {
+        List<Property> props = new ArrayList<>();
+        // clazz.getFields() // only public
+        for (Field field : clazz.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
 
-		List<Property> props = new ArrayList<>();
+            // if (Modifier.isPublic(modifiers)) {
 
-		for (Field field : clazz.getFields()) {
-			int modifiers = field.getModifiers();
+            if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) {
+                continue;
+            }
 
-			if (Modifier.isPublic(modifiers)) {
+            if (field.getAnnotation(Transient.class) != null) {
+                continue;
+            }
 
-				if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) {
-					continue;
-				}
+            Property prop = new Property();
+            prop.name = field.getName();
+            prop.field = field;
+            prop.dataType = field.getType();
 
-				if (field.getAnnotation(Transient.class) != null) {
-					continue;
-				}
+            applyAnnotations(prop, field);
 
-				Property prop = new Property();
-				prop.name = field.getName();
-				prop.field = field;
-				prop.dataType = field.getType();
+            props.add(prop);
+            // }
+        }
 
-				applyAnnotations(prop, field);
+        BeanInfo beanInfo = Introspector.getBeanInfo(clazz, Object.class);
+        PropertyDescriptor[] descriptors = beanInfo.getPropertyDescriptors();
+        for (PropertyDescriptor descriptor : descriptors) {
 
-				props.add(prop);
-			}
-		}
+            Method readMethod = descriptor.getReadMethod();
 
-		BeanInfo beanInfo = Introspector.getBeanInfo(clazz, Object.class);
-		PropertyDescriptor[] descriptors = beanInfo.getPropertyDescriptors();
-		for (PropertyDescriptor descriptor : descriptors) {
+            if (readMethod == null) {
+                continue;
+            }
+            if (Modifier.isPublic(readMethod.getModifiers())) {
 
-			Method readMethod = descriptor.getReadMethod();
-			if (readMethod == null) {
-				continue;
-			}
-			if (readMethod.getAnnotation(Transient.class) != null) {
-				continue;
-			}
+                if (readMethod.getAnnotation(Transient.class) != null) {
+                    continue;
+                }
 
-			Property prop = new Property();
-			prop.name = descriptor.getName();
-			prop.readMethod = readMethod;
-			prop.writeMethod = descriptor.getWriteMethod();
-			prop.dataType = descriptor.getPropertyType();
+                Property prop = new Property();
+                prop.name = descriptor.getName();
+                prop.readMethod = readMethod;
+                prop.writeMethod = descriptor.getWriteMethod();
+                prop.dataType = descriptor.getPropertyType();
 
-			applyAnnotations(prop, prop.readMethod);
+                applyAnnotations(prop, prop.readMethod);
 
-			props.add(prop);
-		}
+                // maybe we already have a field added for this property
+                Property existing = props.stream().filter(p -> p.name.equals(prop.name)).findFirst().orElse(null);
+                if (existing == null)
+                    existing = props.stream().filter(p -> p.field != null && p.field.getName().equals(prop.name))
+                            .findFirst().orElse(null);
 
-		return props;
-	}
+                if (existing != null) {
+                    if (prop.columnAnnotation != null) {
+                        props.remove(existing); // we use the one with the Column annotation
+                        props.add(prop);
+                    } else {
+                        // use the getter/setter and continue
+                        existing.readMethod = readMethod;
+                        existing.writeMethod = descriptor.getWriteMethod();
+                    }
+                }
+                else
+                    props.add(prop);
+            }
+        }
 
-	/**
-	 * Apply the annotations on the field or getter method to the property.
-	 * 
-	 * @throws IllegalAccessException
-	 * @throws InstantiationException
-	 */
-	private void applyAnnotations(Property prop, AnnotatedElement ae)
-			throws InstantiationException, IllegalAccessException {
+        return props;
+    }
 
-		Column col = ae.getAnnotation(Column.class);
-		if (col != null) {
-			String name = col.name().trim();
-			if (name.length() > 0) {
-				prop.name = name;
-			}
-			prop.columnAnnotation = col;
-		}
+    /**
+     * Apply the annotations on the field or getter method to the property.
+     * 
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
+    private void applyAnnotations(Property prop, AnnotatedElement ae)
+            throws InstantiationException, IllegalAccessException {
 
-		if (ae.getAnnotation(Id.class) != null) {
-			prop.isPrimaryKey = true;
-			primaryKeyName = prop.name;
-		}
+        Column col = ae.getAnnotation(Column.class);
+        if (col != null) {
+            String name = col.name().trim();
+            if (name.length() > 0) {
+                prop.name = name;
+            }
+            prop.columnAnnotation = col;
+        }
 
-		if (ae.getAnnotation(GeneratedValue.class) != null) {
-			generatedColumnName = prop.name;
-			prop.isGenerated = true;
-		}
+        if (ae.getAnnotation(Id.class) != null) {
+            prop.isPrimaryKey = true;
+            primaryKeyName = prop.name;
+        }
 
-		if (prop.dataType.isEnum()) {
-			prop.isEnumField = true;
-			prop.enumClass = (Class<Enum>) prop.dataType;
-			/*
-			 * We default to STRING enum type. Can be overriden with @Enumerated annotation
-			 */
-			prop.enumType = EnumType.STRING;
-			if (ae.getAnnotation(Enumerated.class) != null) {
-				prop.enumType = ae.getAnnotation(Enumerated.class).value();
-			}
-		}
+        if (ae.getAnnotation(GeneratedValue.class) != null) {
+            generatedColumnName = prop.name;
+            prop.isGenerated = true;
+        }
 
-		DbSerializer sc = ae.getAnnotation(DbSerializer.class);
-		if (sc != null) {
-			prop.serializer = sc.value().newInstance();
-		}
+        if (ae.getAnnotation(OneToOne.class) != null) {
+            if (!prop.name.toLowerCase().endsWith("id"))
+                prop.name += "_id";
+            prop.relationClass = prop.dataType;
+            prop.dataType = Long.class;
+            prop.isRelation = true;
+        }
 
-		Convert c = ae.getAnnotation(Convert.class);
-		if (c != null) {
-			prop.converter = (AttributeConverter) c.converter().newInstance();
-		}
+        if (ae.getAnnotation(OneToMany.class) != null) {
+            OneToMany otm = ae.getAnnotation(OneToMany.class);
+            prop.relationClass = otm.targetEntity() != null ? otm.targetEntity() : prop.dataType;
+            prop.dataType = List.class;
+            prop.isRelation = true;
+            prop.hasColumn = false; // no need for a field in table
+        }
 
-	}
+        if (ae.getAnnotation(ManyToOne.class) != null) {
+            if (!prop.name.toLowerCase().endsWith("id"))
+                prop.name += "_id";
+            prop.relationClass = prop.dataType;
+            prop.dataType = Long.class;
+            prop.isRelation = true;
+        }
 
-	public Object getValue(Object pojo, String name) {
+        if (prop.dataType.isEnum()) {
+            prop.isEnumField = true;
+            prop.enumClass = (Class<Enum>) prop.dataType;
+            /*
+             * We default to STRING enum type. Can be overriden with @Enumerated annotation
+             */
+            prop.enumType = EnumType.STRING;
+            if (ae.getAnnotation(Enumerated.class) != null) {
+                prop.enumType = ae.getAnnotation(Enumerated.class).value();
+            }
+        }
 
-		try {
+        DbSerializer sc = ae.getAnnotation(DbSerializer.class);
+        if (sc != null) {
+            prop.serializer = sc.value().newInstance();
+        }
 
-			Property prop = propertyMap.get(name);
-			if (prop == null) {
-				throw new DbException("No such field: " + name);
-			}
+        Convert c = ae.getAnnotation(Convert.class);
+        if (c != null) {
+            prop.converter = (AttributeConverter) c.converter().newInstance();
+        }
 
-			Object value = null;
+    }
 
-			if (prop.readMethod != null) {
-				value = prop.readMethod.invoke(pojo);
+    @Override
+    public Object getValue(Object pojo, String name) {
 
-			} else if (prop.field != null) {
-				value = prop.field.get(pojo);
-			}
+        try {
 
-			if (value != null) {
-				if (prop.serializer != null) {
-					value = prop.serializer.serialize(value);
-					
-				} else if (prop.converter != null) {
-					value = prop.converter.convertToDatabaseColumn(value);
-					
-				} else if (prop.isEnumField) {
-					// handle enums according to selected enum type
-					if (prop.enumType == EnumType.ORDINAL) {
-						value = ((Enum) value).ordinal();
-					}
-					// EnumType.STRING and others (if present in the future)
-					else {
-						value = value.toString();
-					}
-				}
-			}
+            Property prop = propertyMap.get(name);
+            if (prop == null) {
+                throw new DbException("No such field: " + name);
+            }
 
-			return value;
+            Object value = null;
 
-		} catch (Throwable t) {
-			throw new DbException(t);
-		}
-	}
+            if (prop.readMethod != null) {
+                value = prop.readMethod.invoke(pojo);
 
-	public void putValue(Object pojo, String name, Object value) {
-		putValue(pojo, name, value, false);
-	}
+            } else if (prop.field != null) {
+                value = prop.field.get(pojo);
+            }
 
-	public void putValue(Object pojo, String name, Object value, boolean ignoreIfMissing) {
+            if (value != null) {
+                if (prop.serializer != null) {
+                    value = prop.serializer.serialize(value);
 
-		Property prop = propertyMap.get(name);
-		if (prop == null) {
-			if (ignoreIfMissing) {
-				return;
-			}
-			throw new DbException("No such field: " + name);
-		}
+                } else if (prop.converter != null) {
+                    value = prop.converter.convertToDatabaseColumn(value);
 
-		if (value != null) {
-			if (prop.serializer != null) {
-				value = prop.serializer.deserialize((String) value, prop.dataType);
-				
-			} else if (prop.converter != null) {
-				value = prop.converter.convertToEntityAttribute(value);
+                } else if (prop.isEnumField) {
+                    // handle enums according to selected enum type
+                    if (prop.enumType == EnumType.ORDINAL) {
+                        value = ((Enum) value).ordinal();
+                    }
+                    // EnumType.STRING and others (if present in the future)
+                    else {
+                        value = value.toString();
+                    }
+                }
+            }
 
-			} else if (prop.isEnumField) {
-				value = getEnumConst(prop.enumClass, prop.enumType, value);
-			}
-		}
+            return value;
+        } catch (java.lang.IllegalAccessException i) {
+            throw new DbException("Access to private field not allowed. Please provide getter method.", i);
+        } catch (Throwable t) {
+            throw new DbException(t);
+        }
+    }
 
-		if (prop.writeMethod != null) {
-			try {
-				prop.writeMethod.invoke(pojo, value);
-			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				throw new DbException("Could not write value into pojo. Property: " + prop.name + " method: "
-						+ prop.writeMethod.toString() + " value: " + value + " value class: "
-						+ value.getClass().toString(), e);
-			}
-			return;
-		}
+    @Override
+    public void putValue(Object pojo, String name, Object value) {
+        putValue(pojo, name, value, false);
+    }
 
-		if (prop.field != null) {
-			try {
-				prop.field.set(pojo, value);
-			} catch (IllegalArgumentException | IllegalAccessException e) {
-				throw new DbException(
-						"Could not set value into pojo. Field: " + prop.field.toString() + " value: " + value, e);
-			}
-			return;
-		}
+    @Override
+    public void putValue(Object pojo, String name, Object value, boolean ignoreIfMissing) {
 
-	}
+        Property prop = propertyMap.get(name);
+        if (prop == null) {
+            if (ignoreIfMissing) {
+                return;
+            }
+            throw new DbException("No such field: " + name);
+        }
 
-	/**
-	 * Convert a string to an enum const of the appropriate class.
-	 */
-	private <T extends Enum<T>> Object getEnumConst(Class<T> enumType, EnumType type, Object value) {
-		String str = value.toString();
-		if (type == EnumType.ORDINAL) {
-			Integer ordinalValue = (Integer) value;
-			if (ordinalValue < 0 || ordinalValue >= enumType.getEnumConstants().length) {
-				throw new DbException(
-						"Invalid ordinal number " + ordinalValue + " for enum class " + enumType.getCanonicalName());
-			}
-			return enumType.getEnumConstants()[ordinalValue];
-		} else {
-			for (T e : enumType.getEnumConstants()) {
-				if (str.equals(e.toString())) {
-					return e;
-				}
-			}
-			throw new DbException("Enum value does not exist. value:" + str);
-		}
-	}
+        if (value != null) {
+            if (prop.serializer != null) {
+                value = prop.serializer.deserialize((String) value, prop.dataType);
 
-	@Override
-	public Property getGeneratedColumnProperty() {
-		return propertyMap.get(generatedColumnName);
-	}
+            } else if (prop.converter != null) {
+                value = prop.converter.convertToEntityAttribute(value);
 
-	@Override
-	public Property getProperty(String name) {
-		return propertyMap.get(name);
-	}
+            } else if (prop.isEnumField) {
+                value = getEnumConst(prop.enumClass, prop.enumType, value);
+            }
+        }
 
+        if (prop.writeMethod != null) {
+            try {
+                prop.writeMethod.invoke(pojo, value);
+            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                throw new DbException("Could not write value into pojo. Property: " + prop.name + " method: "
+                        + prop.writeMethod.toString() + " value: " + value + " value class: "
+                        + value.getClass().toString(), e);
+            }
+            return;
+        }
+
+        if (prop.field != null) {
+            try {
+                prop.field.set(pojo, value);
+            } catch (IllegalArgumentException | IllegalAccessException e) {
+                throw new DbException(
+                        "Could not set value into pojo. Field: " + prop.field.toString() + " value: " + value, e);
+            }
+            return;
+        }
+
+    }
+
+    /**
+     * Convert a string to an enum const of the appropriate class.
+     */
+    private <T extends Enum<T>> Object getEnumConst(Class<T> enumType, EnumType type, Object value) {
+        String str = value.toString();
+        if (type == EnumType.ORDINAL) {
+            Integer ordinalValue = (Integer) value;
+            if (ordinalValue < 0 || ordinalValue >= enumType.getEnumConstants().length) {
+                throw new DbException(
+                        "Invalid ordinal number " + ordinalValue + " for enum class " + enumType.getCanonicalName());
+            }
+            return enumType.getEnumConstants()[ordinalValue];
+        } else {
+            for (T e : enumType.getEnumConstants()) {
+                if (str.equals(e.toString())) {
+                    return e;
+                }
+            }
+            throw new DbException("Enum value does not exist. value:" + str);
+        }
+    }
+
+    @Override
+    public Property getGeneratedColumnProperty() {
+        return propertyMap.get(generatedColumnName);
+    }
+
+    @Override
+    public Property getProperty(String name) {
+        return propertyMap.get(name);
+    }
+
+    @Override
+    public List<Property> getProperties() {
+        return propertyMap.values().stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> getPropertyNames() {
+        return propertyMap.keySet().stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public String getPrimaryKeyName() {
+        return primaryKeyName;
+    }
+
+    @Override
+    public Property findRelation(Class<?> entity) {
+        return propertyMap.values().stream().filter(p -> p.isRelation && p.relationClass.equals(entity)).findFirst()
+                .orElse(null);
+    }
 }

@@ -22,7 +22,7 @@ public class Database {
 
     private static final Logger LOG = LoggerFactory.getLogger(Database.class);
 
-    protected SqlMaker sqlMaker = new StandardSqlMaker();
+    protected SqlMaker sqlMaker = new StandardSqlMaker(this);
     protected DataSource ds;
     protected ISqlLogger sqlLogger = null;
 
@@ -42,11 +42,11 @@ public class Database {
      * Set the maker object for the particular flavor of sql.
      */
     public void setSqlMaker(SqlMaker sqlMaker) {
-	this.sqlMaker = sqlMaker;
+        this.sqlMaker = sqlMaker;
     }
 
     public SqlMaker getSqlMaker() {
-	return sqlMaker;
+        return sqlMaker;
     }
 
     /**
@@ -54,53 +54,53 @@ public class Database {
      * how the DataSource is created or configured.
      */
     protected DataSource getDataSource() throws SQLException {
-	HikariConfig config = new HikariConfig();
-	config.setMaximumPoolSize(maxPoolSize);
+        HikariConfig config = new HikariConfig();
+        config.setMaximumPoolSize(maxPoolSize);
 
-	if (logger != null) {
-	    try {
-		sqlLogger = (ISqlLogger) Class.forName(logger).newInstance();
-	    } catch (Exception e) {
+        if (logger != null) {
+            try {
+                sqlLogger = (ISqlLogger) Class.forName(logger).newInstance();
+            } catch (Exception e) {
 
-	    }
-	}
+            }
+        }
 
-	if (dataSourceClassName != null) {
-	    config.setDataSourceClassName(dataSourceClassName);
-	}
+        if (dataSourceClassName != null) {
+            config.setDataSourceClassName(dataSourceClassName);
+        }
 
-	if (driverClassName != null) {
-	    config.setDriverClassName(driverClassName);
-	}
+        if (driverClassName != null) {
+            config.setDriverClassName(driverClassName);
+        }
 
-	if (jdbcUrl != null) {
-	    config.setJdbcUrl(jdbcUrl);
-	}
+        if (jdbcUrl != null) {
+            config.setJdbcUrl(jdbcUrl);
+        }
 
-	addDataSourceProperty("serverName", serverName);
-	addDataSourceProperty("databaseName", databaseName);
-	addDataSourceProperty("user", user);
-	addDataSourceProperty("password", password);
+        addDataSourceProperty("serverName", serverName);
+        addDataSourceProperty("databaseName", databaseName);
+        addDataSourceProperty("user", user);
+        addDataSourceProperty("password", password);
 
-	for (Map.Entry<String, String> entry : dataSourceProperties.entrySet()) {
-	    config.addDataSourceProperty(entry.getKey(), entry.getValue());
-	}
+        for (Map.Entry<String, String> entry : dataSourceProperties.entrySet()) {
+            config.addDataSourceProperty(entry.getKey(), entry.getValue());
+        }
 
-	/*
-	 * addConfigProperty(config, "serverName", serverName);
-	 * addConfigProperty(config, "databaseName", databaseName);
-	 * addConfigProperty(config, "user", user); addConfigProperty(config,
-	 * "password", password);
-	 */
+        /*
+         * addConfigProperty(config, "serverName", serverName);
+         * addConfigProperty(config, "databaseName", databaseName);
+         * addConfigProperty(config, "user", user); addConfigProperty(config,
+         * "password", password);
+         */
 
-	config.setLeakDetectionThreshold(30000);
+        config.setLeakDetectionThreshold(30000);
 
-	LOG.debug("connecting to %s", jdbcUrl);
-	return new HikariDataSource(config);
+        LOG.debug("connecting to %s", jdbcUrl);
+        return new HikariDataSource(config);
     }
 
     public void addDataSourceProperty(String name, String value) {
-	dataSourceProperties.put(name, value);
+        dataSourceProperties.put(name, value);
     }
 
     /*
@@ -116,7 +116,7 @@ public class Database {
      * @param args The parameter values to use in the query.
      */
     public Query sql(String sql, Object... args) {
-	return new Query(this).sql(sql, args);
+        return new Query(this).sql(sql, args);
     }
 
     /**
@@ -126,14 +126,14 @@ public class Database {
      * @param args  The parameter values to use in the where, example: "Bob"
      */
     public Query where(String where, Object... args) {
-	return new Query(this).where(where, args);
+        return new Query(this).where(where, args);
     }
 
     /**
      * Create a query with the given "order by" clause.
      */
     public Query orderBy(String orderBy) {
-	return new Query(this).orderBy(orderBy);
+        return new Query(this).orderBy(orderBy);
     }
 
     /**
@@ -142,16 +142,16 @@ public class Database {
      * must close the connection after you're done with it.
      */
     public Connection getConnection() {
-	try {
+        try {
 
-	    if (ds == null) {
-		ds = getDataSource();
-	    }
-	    return ds.getConnection();
+            if (ds == null) {
+                ds = getDataSource();
+            }
+            return ds.getConnection();
 
-	} catch (Throwable t) {
-	    throw new DbException(t);
-	}
+        } catch (Throwable t) {
+            throw new DbException(t);
+        }
     }
 
     /**
@@ -160,7 +160,7 @@ public class Database {
      * use.
      */
     public Query createTable(Class<?> clazz) {
-	return new Query(this).createTable(clazz);
+        return new Query(this).createTable(clazz);
     }
 
     /**
@@ -168,7 +168,7 @@ public class Database {
      * specify the table, or you can specify the table with the .table() method.
      */
     public Query insert(Object row) {
-	return new Query(this).insert(row);
+        return new Query(this).insert(row);
     }
 
     /**
@@ -176,7 +176,7 @@ public class Database {
      * generateKeyReceiver} method.
      */
     public Query generatedKeyReceiver(Object generatedKeyReceiver, String... generatedKeyNames) {
-	return new Query(this).generatedKeyReceiver(generatedKeyReceiver, generatedKeyNames);
+        return new Query(this).generatedKeyReceiver(generatedKeyReceiver, generatedKeyNames);
     }
 
     /**
@@ -185,7 +185,7 @@ public class Database {
      * which table to hit.
      */
     public Query delete(Object row) {
-	return new Query(this).delete(row);
+        return new Query(this).delete(row);
     }
 
     /**
@@ -195,7 +195,7 @@ public class Database {
      * clazz.
      */
     public <T> List<T> results(Class<T> clazz) {
-	return new Query(this).results(clazz);
+        return new Query(this).results(clazz);
     }
 
     /**
@@ -203,7 +203,7 @@ public class Database {
      * class that implements Map is specified.
      */
     public <T> T first(Class<T> clazz) {
-	return new Query(this).first(clazz);
+        return new Query(this).first(clazz);
     }
 
     /**
@@ -211,7 +211,7 @@ public class Database {
      * key.
      */
     public Query update(Object row) {
-	return new Query(this).update(row);
+        return new Query(this).update(row);
     }
 
     /**
@@ -219,14 +219,14 @@ public class Database {
      * a match on a primary key.
      */
     public Query upsert(Object row) {
-	return new Query(this).upsert(row);
+        return new Query(this).upsert(row);
     }
 
     /**
      * Create a query and specify which table it operates on.
      */
     public Query table(String table) {
-	return new Query(this).table(table);
+        return new Query(this).table(table);
     }
 
     /**
@@ -238,61 +238,61 @@ public class Database {
      * @return a transaction object
      */
     public Transaction startTransaction() {
-	Transaction trans = new Transaction();
-	trans.setConnection(getConnection());
-	return trans;
+        Transaction trans = new Transaction();
+        trans.setConnection(getConnection());
+        return trans;
     }
 
     /**
      * Create a query that uses this transaction object.
      */
     public Query transaction(Transaction trans) {
-	return new Query(this).transaction(trans);
+        return new Query(this).transaction(trans);
     }
 
     public void close() {
-	if (ds instanceof HikariDataSource) {
-	    ((HikariDataSource) ds).close();
-	}
+        if (ds instanceof HikariDataSource) {
+            ((HikariDataSource) ds).close();
+        }
     }
 
     public void setDataSourceClassName(String dataSourceClassName) {
-	this.dataSourceClassName = dataSourceClassName;
+        this.dataSourceClassName = dataSourceClassName;
     }
 
     public void setDriverClassName(String driverClassName) {
-	this.driverClassName = driverClassName;
+        this.driverClassName = driverClassName;
     }
 
     public void setJdbcUrl(String jdbcUrl) {
-	this.jdbcUrl = jdbcUrl;
+        this.jdbcUrl = jdbcUrl;
     }
 
     public void setServerName(String serverName) {
-	this.serverName = serverName;
+        this.serverName = serverName;
     }
 
     public void setDatabaseName(String databaseName) {
-	this.databaseName = databaseName;
+        this.databaseName = databaseName;
     }
 
     public void setUser(String user) {
-	this.user = user;
+        this.user = user;
     }
 
     public void setPassword(String password) {
-	this.password = password;
+        this.password = password;
     }
 
     public int getMaxPoolSize() {
-	return maxPoolSize;
+        return maxPoolSize;
     }
 
     public void setMaxPoolSize(int maxPoolSize) {
-	this.maxPoolSize = maxPoolSize;
+        this.maxPoolSize = maxPoolSize;
     }
 
     public ISqlLogger getSqlLogger() {
-	return sqlLogger;
+        return sqlLogger;
     }
 }

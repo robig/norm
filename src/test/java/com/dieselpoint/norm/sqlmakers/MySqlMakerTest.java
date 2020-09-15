@@ -15,8 +15,8 @@ public class MySqlMakerTest {
 
     @Before
     public void setup() {
-        sut = new MySqlMaker();
         db = mock(Database.class);
+        sut = new MySqlMaker(db);
 
         when(db.getSqlMaker()).thenReturn(sut);
     }

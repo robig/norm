@@ -16,12 +16,20 @@ public class Property {
 	public Method writeMethod;
 	public Field field;
 	public Class<?> dataType;
-	public boolean isGenerated;
+    public boolean isGenerated; // means auto increment
 	public boolean isPrimaryKey;
 	public boolean isEnumField;
+    public boolean isRelation;
+    public boolean hasColumn = true;
+    public Class<?> relationClass;
 	public Class<Enum> enumClass;
 	public EnumType enumType;
 	public Column columnAnnotation;
 	public DbSerializable serializer;
 	public AttributeConverter converter;
+
+    @Override
+    public String toString() {
+	return "Property " + name;
+    }
 }
