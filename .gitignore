@@ -9,3 +9,4 @@
 /build/
 /.gradle/
 /gradlew.bat
+/h2test.trace.db

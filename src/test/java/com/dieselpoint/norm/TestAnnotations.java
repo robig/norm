@@ -178,7 +178,7 @@ public class TestAnnotations {
         @Column(name = "street")
         private String street;
 
-        @Column(name = "number")
+
         private String houseNumber;
 
         @OneToMany(targetEntity = Room.class)
@@ -200,6 +200,7 @@ public class TestAnnotations {
             this.street = street;
         }
 
+        @Column(name = "number") // Issue in xbt
         public String getHouseNumber() {
             return houseNumber;
         }

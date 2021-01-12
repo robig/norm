@@ -135,9 +135,7 @@ public class StandardPojoInfo implements PojoInfo {
             }
             if (Modifier.isPublic(readMethod.getModifiers())) {
 
-                if (readMethod.getAnnotation(Transient.class) != null) {
-                    continue;
-                }
+                Transient overrideTransient = readMethod.getAnnotation(Transient.class);
 
                 Property prop = new Property();
                 prop.name = descriptor.getName();
@@ -145,16 +143,21 @@ public class StandardPojoInfo implements PojoInfo {
                 prop.writeMethod = descriptor.getWriteMethod();
                 prop.dataType = descriptor.getPropertyType();
 
-                applyAnnotations(prop, prop.readMethod);
-
                 // maybe we already have a field added for this property
                 Property existing = props.stream().filter(p -> p.name.equals(prop.name)).findFirst().orElse(null);
-                if (existing == null)
+
+                applyAnnotations(prop, prop.readMethod);
+
+                if (existing == null) // fallback
+                    existing = props.stream().filter(p -> p.name.equals(prop.name)).findFirst().orElse(null);
+                if (existing == null) // fallback2
                     existing = props.stream().filter(p -> p.field != null && p.field.getName().equals(prop.name))
                             .findFirst().orElse(null);
 
                 if (existing != null) {
-                    if (prop.columnAnnotation != null) {
+                    if (overrideTransient != null) {
+                        props.remove(existing);
+                    } else if (prop.columnAnnotation != null) {
                         props.remove(existing); // we use the one with the Column annotation
                         props.add(prop);
                     } else {
@@ -163,7 +166,7 @@ public class StandardPojoInfo implements PojoInfo {
                         existing.writeMethod = descriptor.getWriteMethod();
                     }
                 }
-                else
+                else if (overrideTransient == null)
                     props.add(prop);
             }
         }

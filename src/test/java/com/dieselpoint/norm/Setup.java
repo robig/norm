@@ -11,9 +11,12 @@ public class Setup {
 		System.setProperty("norm.databaseName", "mydb");
 
 
-	System.setProperty("norm.jdbcUrl", "jdbc:mysql://localhost:3306/mydb?useSSL=false");
-	System.setProperty("norm.user", "root");
-	System.setProperty("norm.password", "test123");
+        /*
+         * System.setProperty("norm.jdbcUrl",
+         * "jdbc:mysql://localhost:3306/mydb?useSSL=false");
+         * System.setProperty("norm.user", "root"); System.setProperty("norm.password",
+         * "test123");
+         */
 		
 	/*
 	 * System.setProperty("norm.dataSourceClassName",
@@ -21,11 +24,10 @@ public class Setup {
 	 * "postgres"); System.setProperty("norm.password", "postgres");
 	 */
 
-		/*
+
 		System.setProperty("norm.jdbcUrl", "jdbc:h2:./h2test;database_to_upper=false");
 		System.setProperty("norm.user", "root");
-		System.setProperty("norm.password", "rootpassword");
-		*/
+        System.setProperty("norm.password", "test123");
 		
 		/*
 		 * SampleCode doesn't yet work because the sqlite create table syntax is different. Need a new SQL maker.
