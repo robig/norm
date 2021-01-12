@@ -4,14 +4,14 @@ apply plugin: 'eclipse'
 apply from: "http://qa01.dev.flatex.com/repositories.gradle"
 
 group = 'XCOM'
-version = '0.8.7'
+version = "${bsRelease}.0"
 
 description = """Norm"""
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 tasks.withType(JavaCompile) {
-	options.encoding = 'UTF-8'
+    options.encoding = 'UTF-8'
 }
 
 dependencies {
